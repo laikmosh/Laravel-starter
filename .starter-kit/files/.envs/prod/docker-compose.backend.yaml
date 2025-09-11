@@ -1,0 +1,29 @@
+services:
+  # Backend
+  backend:
+    build:
+      context: ../../..
+      dockerfile: backend/.envs/prod/Dockerfile
+      args:
+        - WWWUSER=1000
+        - WWWGROUP=1000
+    env_file:
+      - ./settings/.env.server
+      - ./settings/.env.app
+      - ./settings/.env.services
+      - ./settings/.env.debug
+    restart: unless-stopped
+    volumes:
+      - backend-storage:/var/www/html/storage
+    networks:
+      - vpc
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  backend-storage:
+    driver: local

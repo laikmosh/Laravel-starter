@@ -1,0 +1,26 @@
+services:
+  # Backend
+  backend:
+    build:
+      context: ../../..
+      dockerfile: backend/.envs/dev/Dockerfile
+    env_file:
+      - ./.config/.env.server
+      - ./.config/.env.app
+      - ./.config/.env.services
+      - ./.config/.env.debug
+    restart: unless-stopped
+    volumes:
+      - ../../..:/workspaces:delegated
+    networks:
+      - vpc
+
+  # Cloudflare
+  cloudflare:
+    env_file:
+      - ./cloudflared/.env
+    extends:
+      file: ../../../cicd/docker-compose.cicd.yaml
+      service: cloudflared
+    volumes:
+      - ./cloudflared/:/cf
