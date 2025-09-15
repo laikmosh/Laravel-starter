@@ -103,8 +103,8 @@ class Installer
                 // Create a basic .env file if .env.example doesn't exist
                 $this->createBasicEnvFile();
             }
-            $this->exec("php artisan key:generate");
-            $this->exec("php artisan install:broadcasting");
+            // $this->exec("php artisan key:generate");
+            // $this->exec("php artisan install:broadcasting");
         }
         
         // Configure application

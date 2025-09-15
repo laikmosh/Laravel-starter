@@ -9,6 +9,8 @@
     "scripts": {
         "post-create-project-cmd": [
             "@php install.php",
+            "@php artisan key:generate",
+            "@php artisan install:broadcasting",
             "@php artisan starter:init"
         ]
     },
