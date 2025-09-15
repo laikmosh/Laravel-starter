@@ -1,28 +1,53 @@
 #!/usr/bin/env php
 <?php
-// artisan - Minimal bootstrap to run our installer
+// This is a bootstrap artisan file for the Laravel Starter Kit
+// It allows running starter:init before Laravel is installed
 
-// Simple autoloader for our installer
-spl_autoload_register(function ($class) {
-    $file = __DIR__ . '/.starter-kit/' . str_replace('\\', '/', $class) . '.php';
-    if (file_exists($file)) {
-        require $file;
-    }
-});
+// Check if this is actually Laravel's artisan (has vendor/autoload.php)
+if (file_exists(__DIR__ . '/vendor/autoload.php') && 
+    file_exists(__DIR__ . '/bootstrap/app.php') &&
+    !file_exists(__DIR__ . '/.starter-kit')) {
+    // Laravel is fully installed and starter kit is already applied
+    // Use Laravel's normal artisan boot process
+    define('LARAVEL_START', microtime(true));
+    
+    require __DIR__ . '/vendor/autoload.php';
+    
+    $app = require_once __DIR__ . '/bootstrap/app.php';
+    
+    $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+    
+    $status = $kernel->handle(
+        $input = new Symfony\Component\Console\Input\ArgvInput,
+        new Symfony\Component\Console\Output\ConsoleOutput
+    );
+    
+    $kernel->terminate($input, $status);
+    
+    exit($status);
+}
 
-// Handle starter:init command first, regardless of Laravel installation status
-if (isset($argv[1]) && $argv[1] === 'starter:init') {
+// If we're here, either Laravel isn't installed or starter kit is still present
+// Check for starter:init command
+if (isset($argv[1]) && $argv[1] === 'starter:init' && file_exists(__DIR__ . '/.starter-kit')) {
+    // Simple autoloader for our installer
+    spl_autoload_register(function ($class) {
+        $file = __DIR__ . '/.starter-kit/' . str_replace('\\', '/', $class) . '.php';
+        if (file_exists($file)) {
+            require $file;
+        }
+    });
+    
     require __DIR__ . '/.starter-kit/Installer.php';
     $installer = new StarterKit\Installer();
     $installer->run();
     exit(0);
 }
 
-// Check if Laravel is installed and ready (bootstrap and vendor exist)
-// During installation, we need to allow artisan commands to run even with .starter-kit present
-if (file_exists(__DIR__ . '/vendor/autoload.php') && 
-    file_exists(__DIR__ . '/bootstrap/app.php')) {
-    // Laravel is installed, use the real artisan
+// If Laravel is installed but .starter-kit still exists, we're in transition
+// This happens during the installation process
+if (file_exists(__DIR__ . '/vendor/autoload.php') && file_exists(__DIR__ . '/.starter-kit')) {
+    // Allow Laravel commands during installation
     require __DIR__ . '/vendor/autoload.php';
     $app = require_once __DIR__ . '/bootstrap/app.php';
     $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
@@ -32,8 +57,9 @@ if (file_exists(__DIR__ . '/vendor/autoload.php') &&
     );
     $kernel->terminate($input, $status);
     exit($status);
-} else {
-    // Laravel not installed yet
-    echo "Please run: php artisan starter:init\n";
-    exit(1);
 }
+
+// Nothing is installed yet
+echo "Welcome to Laravel Starter Kit!\n";
+echo "Run 'php artisan starter:init' to begin installation.\n";
+exit(1);

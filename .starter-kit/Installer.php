@@ -24,8 +24,16 @@ class Installer
         $this->output("🚀 Laravel Starter Kit Installer");
         $this->output("================================\n");
         
-        // Step 1: Install Laravel
-        $this->installLaravel();
+        // Check if Laravel is already installed (when using 'laravel new')
+        $laravelInstalled = file_exists($this->rootPath . '/vendor/autoload.php') && 
+                           file_exists($this->rootPath . '/bootstrap/app.php');
+        
+        if (!$laravelInstalled) {
+            // Step 1: Install Laravel (only if not already installed)
+            $this->installLaravel();
+        } else {
+            $this->output("✓ Laravel already installed");
+        }
         
         // Step 2: Apply customizations
         $this->applyCustomizations();
@@ -47,25 +55,28 @@ class Installer
     {
         $this->output("📦 Installing Laravel...");
         
-        // Temporarily move .starter-kit to temp location
+        // Temporarily move .starter-kit and our bootstrap artisan to temp location
         $tempStarterKit = sys_get_temp_dir() . '/starter-kit-' . uniqid();
-        rename($this->rootPath . '/.starter-kit', $tempStarterKit);
+        $tempArtisan = sys_get_temp_dir() . '/artisan-' . uniqid();
         
-        // Remove the custom artisan file before Laravel installation
+        rename($this->rootPath . '/.starter-kit', $tempStarterKit);
         if (file_exists($this->rootPath . '/artisan')) {
-            unlink($this->rootPath . '/artisan');
+            rename($this->rootPath . '/artisan', $tempArtisan);
         }
         
         // Clear everything else in root directory
         $this->clearDirectory($this->rootPath, []);
         
         // Install Laravel directly in root (now empty)
-        $this->exec("composer create-project laravel/laravel .");
+        $this->exec("composer create-project laravel/laravel . --no-interaction");
         
-        // Move .starter-kit back
+        // Move .starter-kit back (but NOT the artisan - keep Laravel's original)
         rename($tempStarterKit, $this->rootPath . '/.starter-kit');
         
-        // Laravel's original artisan is now installed and preserved
+        // Clean up temp artisan file
+        if (file_exists($tempArtisan)) {
+            unlink($tempArtisan);
+        }
         
         // Update the Laravel composer.json with our customizations
         $this->updateComposerJson();
@@ -87,9 +98,14 @@ class Installer
         // Update .env.example with custom variables
         $this->updateEnvExample();
         
-        // Create .env from .env.example
+        // Create .env from .env.example if it doesn't exist
         if (!file_exists($this->rootPath . '/.env')) {
-            copy($this->rootPath . '/.env.example', $this->rootPath . '/.env');
+            if (file_exists($this->rootPath . '/.env.example')) {
+                copy($this->rootPath . '/.env.example', $this->rootPath . '/.env');
+            } else {
+                // Create a basic .env file if .env.example doesn't exist
+                $this->createBasicEnvFile();
+            }
             $this->exec("php artisan key:generate");
         }
         
@@ -196,9 +212,13 @@ class Installer
         // Read the Laravel composer.json that was installed
         $laravelComposer = json_decode(file_get_contents($this->rootPath . '/composer.json'), true);
         
-        // Update with our original package name and description
-        $laravelComposer['name'] = $this->originalComposer['name'];
-        $laravelComposer['description'] = $this->originalComposer['description'];
+        // Update with our original package name and description if they exist
+        if (isset($this->originalComposer['name'])) {
+            $laravelComposer['name'] = $this->originalComposer['name'];
+        }
+        if (isset($this->originalComposer['description'])) {
+            $laravelComposer['description'] = $this->originalComposer['description'];
+        }
         
         // Preserve Laravel's standard scripts but remove any starter-kit specific ones
         // Laravel's standard scripts are needed for the framework to work properly
@@ -366,5 +386,34 @@ class Installer
             
             file_put_contents($path, $content);
         }
+    }
+    
+    private function createBasicEnvFile()
+    {
+        $envContent = <<<ENV
+APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+
+MAIL_MAILER=log
+ENV;
+        
+        file_put_contents($this->rootPath . '/.env', $envContent);
+        $this->output("✓ Created basic .env file");
     }
 }
