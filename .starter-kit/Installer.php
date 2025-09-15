@@ -104,6 +104,7 @@ class Installer
                 $this->createBasicEnvFile();
             }
             $this->exec("php artisan key:generate");
+            $this->exec("php artisan install:broadcasting");
         }
         
         // Configure application
