@@ -8,40 +8,52 @@ class StarterInit extends Command
 {
     protected $signature = 'starter:init';
     protected $description = 'Initialize the starter kit';
-    protected $envs = [
-        'APP_NAME',
-        'APP_KEY',
-    ];
 
     public function handle()
     {
-        // Copy APP_KEY from root .env to .envs/dev/.config/.env.app
-        $success = $this->copyEnvKeys(
+        // Copy APP_KEY to multiple .env.app files
+        $appSuccess = $this->copyEnvKeys(
             sourceFile: base_path('.env'),
-            targetFile: base_path('.envs/dev/.config/.env.app'),
-            keys: $this->envs
+            targetFiles: [
+                base_path('.envs/dev/.config/.env.app'),
+                base_path('.envs/prod/.config/.env.app'),
+            ],
+            keys: [
+                'APP_NAME',
+                'APP_KEY',
+            ]
         );
 
-        // Copy APP_KEY from root .env to .envs/prod/.config/.env.app
-        $success = $this->copyEnvKeys(
+        // Copy server keys to multiple .env.server files
+        $serverSuccess = $this->copyEnvKeys(
             sourceFile: base_path('.env'),
-            targetFile: base_path('.envs/prod/.config/.env.app'),
-            keys: $this->envs
+            targetFiles: [
+                base_path('.envs/dev/.config/.env.server'),
+                base_path('.envs/prod/.config/.env.server'),
+            ],
+            keys: [
+                'REVERB_APP_ID',
+                'REVERB_APP_KEY',
+                'REVERB_APP_SECRET',
+            ]
         );
 
-        return $success ? Command::SUCCESS : Command::FAILURE;
+        return ($appSuccess && $serverSuccess) ? Command::SUCCESS : Command::FAILURE;
     }
 
     /**
-     * Copy multiple keys from source .env file to target .env file
+     * Copy multiple keys from source .env file to target .env files
      *
      * @param string $sourceFile Path to source .env file
-     * @param string $targetFile Path to target .env file
+     * @param string|array $targetFiles Path(s) to target .env file(s)
      * @param array $keys Array of keys to copy (e.g., ['APP_KEY', 'DB_HOST'])
-     * @return bool Success status (true if all keys copied successfully)
+     * @return bool Success status (true if all keys copied successfully to all targets)
      */
-    protected function copyEnvKeys(string $sourceFile, string $targetFile, array $keys): bool
+    protected function copyEnvKeys(string $sourceFile, string|array $targetFiles, array $keys): bool
     {
+        // Normalize target files to array
+        $targetFiles = is_array($targetFiles) ? $targetFiles : [$targetFiles];
+        
         // Check if source file exists
         if (!file_exists($sourceFile)) {
             $this->error("Source file not found: {$sourceFile}");
@@ -73,46 +85,54 @@ class StarterInit extends Command
             return false;
         }
         
-        // Ensure target directory exists
-        $targetDir = dirname($targetFile);
-        if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0755, true);
-            $this->info("Created directory: {$targetDir}");
-        }
-
-        // Read or initialize target content
-        $targetContent = '';
-        if (file_exists($targetFile)) {
-            $targetContent = file_get_contents($targetFile);
-        }
-        
-        // Update or add each key
-        foreach ($keyValues as $key => $value) {
-            $pattern = '/^' . preg_quote($key, '/') . '=.*$/m';
-            
-            if (preg_match($pattern, $targetContent)) {
-                // Key exists, replace its value
-                $targetContent = preg_replace($pattern, $key . '=' . $value, $targetContent);
-                $this->info("Updated {$key} in {$targetFile}");
-            } else {
-                // Key doesn't exist, append it
-                if (!empty($targetContent) && !str_ends_with($targetContent, "\n")) {
-                    $targetContent .= "\n";
-                }
-                $targetContent .= "{$key}={$value}\n";
-                $this->info("Added {$key} to {$targetFile}");
+        // Process each target file
+        $allTargetsSuccessful = true;
+        foreach ($targetFiles as $targetFile) {
+            // Ensure target directory exists
+            $targetDir = dirname($targetFile);
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0755, true);
+                $this->info("Created directory: {$targetDir}");
             }
+
+            // Read or initialize target content
+            $targetContent = '';
+            if (file_exists($targetFile)) {
+                $targetContent = file_get_contents($targetFile);
+            }
+            
+            // Update or add each key
+            foreach ($keyValues as $key => $value) {
+                $pattern = '/^' . preg_quote($key, '/') . '=.*$/m';
+                
+                if (preg_match($pattern, $targetContent)) {
+                    // Key exists, replace its value
+                    $targetContent = preg_replace($pattern, $key . '=' . $value, $targetContent);
+                    $this->info("Updated {$key} in {$targetFile}");
+                } else {
+                    // Key doesn't exist, append it
+                    if (!empty($targetContent) && !str_ends_with($targetContent, "\n")) {
+                        $targetContent .= "\n";
+                    }
+                    $targetContent .= "{$key}={$value}\n";
+                    $this->info("Added {$key} to {$targetFile}");
+                }
+            }
+            
+            // Write the updated content
+            if (file_put_contents($targetFile, $targetContent) === false) {
+                $this->error("Failed to write to {$targetFile}");
+                $allTargetsSuccessful = false;
+                continue;
+            }
+            
+            if (!file_exists($targetFile)) {
+                $this->info("Created {$targetFile} with " . count($keyValues) . " key(s)");
+            }
+            
+            $this->info("Successfully copied " . count($keyValues) . " key(s) from {$sourceFile} to {$targetFile}");
         }
         
-        // Write the updated content
-        file_put_contents($targetFile, $targetContent);
-        
-        if (!file_exists($targetFile)) {
-            $this->info("Created {$targetFile} with " . count($keyValues) . " key(s)");
-        }
-        
-        $this->info("Successfully copied " . count($keyValues) . " key(s) from {$sourceFile} to {$targetFile}");
-        
-        return $allKeysFound;
+        return $allKeysFound && $allTargetsSuccessful;
     }
 }
