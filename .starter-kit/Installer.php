@@ -55,28 +55,25 @@ class Installer
     {
         $this->output("📦 Installing Laravel...");
         
-        // Temporarily move .starter-kit and our bootstrap artisan to temp location
+        // Temporarily move .starter-kit and install.php to preserve them
         $tempStarterKit = sys_get_temp_dir() . '/starter-kit-' . uniqid();
-        $tempArtisan = sys_get_temp_dir() . '/artisan-' . uniqid();
+        $tempInstaller = sys_get_temp_dir() . '/install-' . uniqid() . '.php';
         
         rename($this->rootPath . '/.starter-kit', $tempStarterKit);
-        if (file_exists($this->rootPath . '/artisan')) {
-            rename($this->rootPath . '/artisan', $tempArtisan);
-        }
+        rename($this->rootPath . '/install.php', $tempInstaller);
         
-        // Clear everything else in root directory
+        // Clear everything in root directory
         $this->clearDirectory($this->rootPath, []);
         
         // Install Laravel directly in root (now empty)
+        // This will install Laravel's original artisan
         $this->exec("composer create-project laravel/laravel . --no-interaction");
         
-        // Move .starter-kit back (but NOT the artisan - keep Laravel's original)
+        // Move .starter-kit back (but not install.php - we don't need it anymore)
         rename($tempStarterKit, $this->rootPath . '/.starter-kit');
         
-        // Clean up temp artisan file
-        if (file_exists($tempArtisan)) {
-            unlink($tempArtisan);
-        }
+        // Clean up temp installer
+        unlink($tempInstaller);
         
         // Update the Laravel composer.json with our customizations
         $this->updateComposerJson();

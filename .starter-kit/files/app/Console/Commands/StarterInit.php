@@ -11,17 +11,17 @@ class StarterInit extends Command
 
     public function handle()
     {
-        // Copy APP_KEY from root .env to .envs/dev/.env.app
+        // Copy APP_KEY from root .env to .envs/dev/.config/.env.app
         $success = $this->copyEnvKeys(
             sourceFile: base_path('.env'),
-            targetFile: base_path('.envs/dev/.env.app'),
+            targetFile: base_path('.envs/dev/.config/.env.app'),
             keys: ['APP_KEY']
         );
 
-        // Copy APP_KEY from root .env to .envs/dev/.env.app
+        // Copy APP_KEY from root .env to .envs/dev/.config/.env.app
         $success = $this->copyEnvKeys(
             sourceFile: base_path('.env'),
-            targetFile: base_path('.envs/prod/.env.app'),
+            targetFile: base_path('.envs/prod/.config/.env.app'),
             keys: ['APP_KEY']
         );
 
