@@ -67,7 +67,7 @@ class Installer
         
         // Install Laravel directly in root (now empty)
         // This will install Laravel's original artisan
-        $this->exec("composer create-project laravel/laravel . --no-interaction");
+        $this->exec("composer create-project laravel/laravel .");
         
         // Move .starter-kit back (but not install.php - we don't need it anymore)
         rename($tempStarterKit, $this->rootPath . '/.starter-kit');
@@ -174,21 +174,6 @@ class Installer
         
         // Create storage link
         $this->exec("php artisan storage:link");
-        
-        // Run migrations
-        if ($this->confirm("Run database migrations?", true)) {
-            $this->exec("php artisan migrate");
-        }
-        
-        // Create admin user
-        if ($this->confirm("Create admin user?", true)) {
-            $email = $this->ask("Admin email?", "admin@example.com");
-            $password = $this->askSecret("Admin password?");
-            
-            if ($password) {
-                $this->exec("php artisan make:admin --email=\"{$email}\" --password=\"{$password}\"");
-            }
-        }
         
         // Clear caches
         $this->exec("php artisan optimize:clear");
