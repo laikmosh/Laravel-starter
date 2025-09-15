@@ -8,6 +8,10 @@ class StarterInit extends Command
 {
     protected $signature = 'starter:init';
     protected $description = 'Initialize the starter kit';
+    protected $envs = [
+        'APP_NAME',
+        'APP_KEY',
+    ];
 
     public function handle()
     {
@@ -15,14 +19,14 @@ class StarterInit extends Command
         $success = $this->copyEnvKeys(
             sourceFile: base_path('.env'),
             targetFile: base_path('.envs/dev/.config/.env.app'),
-            keys: ['APP_KEY']
+            keys: $this->envs
         );
 
-        // Copy APP_KEY from root .env to .envs/dev/.config/.env.app
+        // Copy APP_KEY from root .env to .envs/prod/.config/.env.app
         $success = $this->copyEnvKeys(
             sourceFile: base_path('.env'),
             targetFile: base_path('.envs/prod/.config/.env.app'),
-            keys: ['APP_KEY']
+            keys: $this->envs
         );
 
         return $success ? Command::SUCCESS : Command::FAILURE;
