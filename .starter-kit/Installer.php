@@ -118,25 +118,7 @@ class Installer
         
         $packages = $this->originalComposer['extra']['starter-kit'];
         
-        $this->output("\n📚 Installing additional packages...");
-        
-        // Install composer packages
-        if (isset($packages['require'])) {
-            foreach ($packages['require'] as $package => $version) {
-                $this->output("  Installing {$package}...");
-                $this->exec("composer require {$package}:{$version}");
-            }
-        }
-        
-        // Install dev packages
-        if (isset($packages['require-dev'])) {
-            foreach ($packages['require-dev'] as $package => $version) {
-                $this->output("  Installing {$package} (dev)...");
-                $this->exec("composer require --dev {$package}:{$version}");
-            }
-        }
-
-        // Obtain permission to install optional packages
+              // Obtain permission to install optional packages
         $permissions = [];
         $devPermissions = [];
         $artisanPermissions = [];
@@ -158,7 +140,7 @@ class Installer
             }
         }
 
-        // Install artisan commands
+        // Artisan commands
         if (isset($packages['packages-post-install-commands'])) {
             foreach ($packages['packages-post-install-commands'] as $title => $commands) {
                 foreach ($commands as $command) {
@@ -166,6 +148,24 @@ class Installer
                         $artisanPermissions[$title] = $command;
                     }
                 }
+            }
+        }
+        
+        $this->output("\n📚 Installing additional packages...");
+        
+        // Install composer packages
+        if (isset($packages['require'])) {
+            foreach ($packages['require'] as $package => $version) {
+                $this->output("  Installing {$package}...");
+                $this->exec("composer require {$package}:{$version}");
+            }
+        }
+        
+        // Install dev packages
+        if (isset($packages['require-dev'])) {
+            foreach ($packages['require-dev'] as $package => $version) {
+                $this->output("  Installing {$package} (dev)...");
+                $this->exec("composer require --dev {$package}:{$version}");
             }
         }
 
