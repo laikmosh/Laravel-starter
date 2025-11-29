@@ -5,8 +5,9 @@ namespace StarterKit;
 
 class Installer
 {
-    private string $rootPath;
-    private array $originalComposer;
+    private array $permissions = [];
+    private array $devPermissions = [];
+    private array $artisanPermissions = [];
     
     public function __construct()
     {
@@ -43,13 +44,16 @@ class Installer
         // Step 2: Apply customizations
         $this->applyCustomizations();
         
-        // Step 3: Install additional packages
+        // Step 3: Configure options (App name, DB, Packages)
+        $this->configureOptions();
+
+        // Step 4: Install additional packages
         $this->installPackages();
         
-        // Step 4: Run post-install setup
+        // Step 5: Run post-install setup
         $this->runPostInstall();
         
-        // Step 5: Clean up starter kit files
+        // Step 6: Clean up starter kit files
         $this->cleanup();
         
         $this->output("\n✅ Starter kit installed successfully!");
@@ -111,24 +115,33 @@ class Installer
         }
         
     }
-    
-    private function installPackages()
+
+    private function configureOptions()
     {
-        // Read packages from the original composer.json (stored in memory)
+        $this->output("\n⚙️  Configuring your application...");
+        
+        // Set application name
+        $appName = \Laravel\Prompts\text(
+            label: 'What is your application name?',
+            default: 'Laravel',
+            placeholder: 'E.g. My Awesome App'
+        );
+        $this->updateEnvironmentFile('APP_NAME', $appName);
+        
+        // Create database
+        if (\Laravel\Prompts\confirm(label: 'Create SQLite database?', default: true)) {
+            touch($this->rootPath . '/database/database.sqlite');
+            $this->updateEnvironmentFile('DB_CONNECTION', 'sqlite');
+            $this->updateEnvironmentFile('DB_DATABASE', $this->rootPath . '/database/database.sqlite');
+        }
+
+        // Package Selection Logic
         if (!isset($this->originalComposer['extra']['starter-kit'])) {
             return;
         }
 
-        // Configure application
-        $this->configureApplication();
-        
         $packages = $this->originalComposer['extra']['starter-kit'];
         
-        // Obtain permission to install optional packages
-        $permissions = [];
-        $devPermissions = [];
-        $artisanPermissions = [];
-
         // Collect all options
         $allOptions = [];
         $optionLabels = [];
@@ -164,24 +177,37 @@ class Installer
             $selectedKeys = \Laravel\Prompts\multiselect(
                 label: 'Select additional packages and commands to install:',
                 options: $optionLabels,
-                default: array_keys($allOptions)
+                default: array_keys($allOptions),
+                scroll: 10
             );
 
             foreach ($selectedKeys as $key) {
                 if (str_starts_with($key, 'opt:')) {
                     $package = substr($key, 4);
-                    $permissions[$package] = $packages['optional'][$package];
+                    $this->permissions[$package] = $packages['optional'][$package];
                 } elseif (str_starts_with($key, 'dev:')) {
                     $package = substr($key, 4);
-                    $devPermissions[$package] = $packages['optional-dev'][$package];
+                    $this->devPermissions[$package] = $packages['optional-dev'][$package];
                 } elseif (str_starts_with($key, 'cmd:')) {
                     $title = substr($key, 4);
                     foreach ($this->originalComposer['extra']['packages-post-install-commands'][$title] as $command) {
-                        $artisanPermissions[$title] = $command;
+                        $this->artisanPermissions[$title] = $command;
                     }
                 }
             }
         }
+        
+        $this->output("✓ Application configured");
+    }
+    
+    private function installPackages()
+    {
+        // Read packages from the original composer.json (stored in memory)
+        if (!isset($this->originalComposer['extra']['starter-kit'])) {
+            return;
+        }
+        
+        $packages = $this->originalComposer['extra']['starter-kit'];
         
         $this->output("\n📚 Installing additional packages...");
         
@@ -202,8 +228,8 @@ class Installer
         }
 
         // Install optional packages
-        if (!empty($permissions)) {
-            foreach ($permissions as $package => $version) {
+        if (!empty($this->permissions)) {
+            foreach ($this->permissions as $package => $version) {
                 $this->output("  Installing {$package}...");
                 $this->exec("composer require {$package}:{$version}");
                 $this->runPackagePostInstallCommands($package);
@@ -211,8 +237,8 @@ class Installer
         }
 
         // Install optional dev packages
-        if (!empty($devPermissions)) {
-            foreach ($devPermissions as $package => $version) {
+        if (!empty($this->devPermissions)) {
+            foreach ($this->devPermissions as $package => $version) {
                 $this->output("  Installing {$package} (dev)...");
                 $this->exec("composer require --dev {$package}:{$version}");
                 $this->runPackagePostInstallCommands($package);
@@ -220,8 +246,8 @@ class Installer
         }
 
         // Install artisan commands
-        if (!empty($artisanPermissions)) {
-            foreach ($artisanPermissions as $title => $command) {
+        if (!empty($this->artisanPermissions)) {
+            foreach ($this->artisanPermissions as $title => $command) {
                 $this->output("    Running artisan command: {$command}...");
                 $this->exec("php artisan {$command}");
             }
@@ -240,270 +266,10 @@ class Installer
         }
 
         // Configure Horizon in supervisord
-        $this->configureSupervisorProgram('horizon', isset($permissions['laravel/horizon']));
+        $this->configureSupervisorProgram('horizon', isset($this->permissions['laravel/horizon']));
         
         // Configure Reverb in supervisord
-        $this->configureSupervisorProgram('reverb', isset($artisanPermissions['broadcasting']));
-    }
-
-    private function configureSupervisorProgram($programName, $enabled)
-    {
-        if ($enabled) {
-            return;
-        }
-
-        $supervisorConf = $this->rootPath . '/.starter-kit/files/.envs/dev/laravel/supervisord.conf';
-        
-        // If the file has already been copied to the root (which happens in applyCustomizations),
-        // we should check there too, but based on the flow, applyCustomizations happens BEFORE installPackages.
-        // However, applyCustomizations copies from .starter-kit/files to root. 
-        // So we should modify the one in the root path if it exists there.
-        // Let's check where applyCustomizations copies to.
-        // It copies $filesDir ($rootPath . '/.starter-kit/files') to $rootPath.
-        // So the file should be at $this->rootPath . '/.envs/dev/laravel/supervisord.conf'
-        
-        $targetFile = $this->rootPath . '/.envs/dev/laravel/supervisord.conf';
-        
-        if (!file_exists($targetFile)) {
-            return;
-        }
-
-        $content = file_get_contents($targetFile);
-        $lines = explode("\n", $content);
-        $newLines = [];
-        $inSection = false;
-        $sectionHeader = "[program:{$programName}]";
-
-        foreach ($lines as $line) {
-            if (trim($line) === $sectionHeader) {
-                $inSection = true;
-                $newLines[] = '; ' . $line;
-                continue;
-            }
-
-            if ($inSection) {
-                if (trim($line) === '' || str_starts_with(trim($line), '[')) {
-                    $inSection = false;
-                    $newLines[] = $line;
-                } else {
-                    $newLines[] = '; ' . $line;
-                }
-            } else {
-                $newLines[] = $line;
-            }
-        }
-
-        file_put_contents($targetFile, implode("\n", $newLines));
-        $this->output("    Disabled {$programName} in supervisord.conf");
-    }
-
-    private function runPackagePostInstallCommands($package)
-    {
-        $artisanCommands = $this->originalComposer['extra']['packages-artisan-commands'][$package] ?? [];
-        $this->output("    Running ".count($artisanCommands)." command(s) for package: {$package}...");
-        foreach ($artisanCommands as $command) {
-            $this->output("    Running artisan command: {$command}...");
-            $this->exec("php artisan {$command}");
-        }
-    }
-    
-    private function configureApplication()
-    {
-        $this->output("\n⚙️  Configuring your application...");
-        
-        // Set application name
-        $appName = $this->ask("What is your application name?", "Laravel");
-        $this->updateEnvironmentFile('APP_NAME', $appName);
-        
-        // Create database
-        if ($this->confirm("Create SQLite database?", true)) {
-            touch($this->rootPath . '/database/database.sqlite');
-            $this->updateEnvironmentFile('DB_CONNECTION', 'sqlite');
-            $this->updateEnvironmentFile('DB_DATABASE', $this->rootPath . '/database/database.sqlite');
-        }
-        
-        $this->output("✓ Application configured");
-    }
-    
-    private function runPostInstall()
-    {
-        $this->output("\n🔧 Running post-install tasks...");
-        
-        // Create storage link
-        $this->exec("php artisan storage:link");
-        
-        // Clear caches
-        $this->exec("php artisan optimize:clear");
-    }
-    
-    private function cleanup()
-    {
-        $this->output("\n🧹 Cleaning up...");
-        
-        // Remove the .starter-kit directory
-        $this->removeDirectory($this->rootPath . '/.starter-kit');
-        
-        $this->output("✓ Starter kit files removed");
-    }
-    
-    private function updateComposerJson()
-    {
-        // Read the Laravel composer.json that was installed
-        $laravelComposer = json_decode(file_get_contents($this->rootPath . '/composer.json'), true);
-        
-        // Update with our original package name and description if they exist
-        if (isset($this->originalComposer['name'])) {
-            $laravelComposer['name'] = $this->originalComposer['name'];
-        }
-        if (isset($this->originalComposer['description'])) {
-            $laravelComposer['description'] = $this->originalComposer['description'];
-        }
-        
-        // Preserve Laravel's standard scripts but remove any starter-kit specific ones
-        // Laravel's standard scripts are needed for the framework to work properly
-        
-        // Write back the updated composer.json
-        file_put_contents(
-            $this->rootPath . '/composer.json',
-            json_encode($laravelComposer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        );
-    }
-    
-    private function clearDirectory($dir, $exclude = [])
-    {
-        $files = scandir($dir);
-        foreach ($files as $file) {
-            if ($file === '.' || $file === '..') {
-                continue;
-            }
-            
-            // Skip excluded files/directories
-            if (in_array($file, $exclude)) {
-                continue;
-            }
-            
-            $path = $dir . '/' . $file;
-            if (is_dir($path)) {
-                $this->removeDirectory($path);
-            } else {
-                unlink($path);
-            }
-        }
-    }
-    
-    
-    
-    private function copyDirectory($source, $dest)
-    {
-        if (!is_dir($source)) {
-            return;
-        }
-        
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST
-        );
-        
-        foreach ($iterator as $item) {
-            $destPath = $dest . '/' . $iterator->getSubPathName();
-            
-            if ($item->isDir()) {
-                if (!is_dir($destPath)) {
-                    mkdir($destPath, 0755, true);
-                }
-            } else {
-                copy($item, $destPath);
-            }
-        }
-    }
-    
-    private function updateEnvExample()
-    {
-        $envPath = $this->rootPath . '/.env.example';
-        $customEnv = $this->rootPath . '/.starter-kit/env.additions';
-        
-        if (file_exists($customEnv)) {
-            $content = file_get_contents($envPath);
-            $additions = file_get_contents($customEnv);
-            file_put_contents($envPath, $content . "\n" . $additions);
-        }
-    }
-    
-    private function exec($command)
-    {
-        passthru($command, $returnCode);
-        
-        if ($returnCode !== 0) {
-            $this->output("Error running: {$command}");
-            exit(1);
-        }
-        
-        return [];
-    }
-    
-    private function removeDirectory($dir)
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        
-        $objects = scandir($dir);
-        foreach ($objects as $object) {
-            if ($object != "." && $object != "..") {
-                if (is_dir($dir . "/" . $object)) {
-                    $this->removeDirectory($dir . "/" . $object);
-                } else {
-                    unlink($dir . "/" . $object);
-                }
-            }
-        }
-        rmdir($dir);
-    }
-    
-    private function output($message)
-    {
-        echo $message . "\n";
-    }
-    
-    private function confirm($question, $default = false)
-    {
-        $defaultText = $default ? "Y/n" : "y/N";
-        echo $question . " ({$defaultText}): ";
-        $handle = fopen("php://stdin", "r");
-        $line = trim(fgets($handle));
-        fclose($handle);
-        
-        if (empty($line)) {
-            return $default;
-        }
-        
-        return in_array(strtolower($line), ['y', 'yes']);
-    }
-    
-    private function ask($question, $default = null)
-    {
-        $defaultText = $default ? " [{$default}]" : "";
-        echo $question . $defaultText . ": ";
-        $handle = fopen("php://stdin", "r");
-        $line = trim(fgets($handle));
-        fclose($handle);
-        
-        return empty($line) ? $default : $line;
-    }
-    
-    private function askSecret($question)
-    {
-        echo $question . ": ";
-        
-        // Hide input for password
-        system('stty -echo');
-        $handle = fopen("php://stdin", "r");
-        $line = trim(fgets($handle));
-        fclose($handle);
-        system('stty echo');
-        
-        echo "\n"; // New line after hidden input
-        return $line;
+        $this->configureSupervisorProgram('reverb', isset($this->artisanPermissions['broadcasting']));
     }
     
     private function updateEnvironmentFile($key, $value)
