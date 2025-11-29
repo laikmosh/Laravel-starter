@@ -69,9 +69,13 @@ class Installer
         // Temporarily move .starter-kit and install.php to preserve them
         $tempStarterKit = sys_get_temp_dir() . '/starter-kit-' . uniqid();
         $tempInstaller = sys_get_temp_dir() . '/install-' . uniqid() . '.php';
+        $tempCleanup = sys_get_temp_dir() . '/cleanup-' . uniqid() . '.php';
         
         rename($this->rootPath . '/.starter-kit', $tempStarterKit);
         rename($this->rootPath . '/install.php', $tempInstaller);
+        if (file_exists($this->rootPath . '/cleanup.php')) {
+            rename($this->rootPath . '/cleanup.php', $tempCleanup);
+        }
         
         // Clear everything in root directory
         $this->clearDirectory($this->rootPath, []);
@@ -82,6 +86,11 @@ class Installer
         
         // Move .starter-kit back (but not install.php - we don't need it anymore)
         rename($tempStarterKit, $this->rootPath . '/.starter-kit');
+        
+        // Restore cleanup.php
+        if (file_exists($tempCleanup)) {
+            rename($tempCleanup, $this->rootPath . '/cleanup.php');
+        }
         
         // Clean up temp installer
         unlink($tempInstaller);
