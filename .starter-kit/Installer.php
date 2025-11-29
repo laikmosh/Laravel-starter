@@ -136,24 +136,29 @@ class Installer
             }
         }
 
-        // Install composer packages
-        if (isset($packages['optional'])) {
+        // Obtain permission to install optional packages
+        $permissions = [];
+
+        // Require user confirmation for optional packages
+        if (isset($packages['optional']) || isset($packages['optional-dev'])) {
             foreach ($packages['optional'] as $package => $version) {
                 if ($this->confirm("Install {$package}?", true)) {
-                    $this->output("  Installing {$package}...");
-                    $this->exec("composer require {$package}:{$version}");
-                    $this->runPackagePostInstallCommands($package);
+                    $permissions[$package] = $version;
+                }
+            }
+            foreach ($packages['optional-dev'] as $package => $version) {
+                if ($this->confirm("Install {$package} --dev?", true)) {
+                    $permissions["--dev $package"] = $version;
                 }
             }
         }
-        // Install composer packages
-        if (isset($packages['optional-dev'])) {
-            foreach ($packages['optional-dev'] as $package => $version) {
-                if ($this->confirm("Install {$package}?", true)) {
-                    $this->output("  Installing {$package}...");
-                    $this->exec("composer require {$package}:{$version}");
-                    $this->runPackagePostInstallCommands($package);
-                }
+
+        // Install optional packages
+        if (isset($permissions)) {
+            foreach ($permissions as $package => $version) {
+                $this->output("  Installing {$package}...");
+                $this->exec("composer require {$package}:{$version}");
+                $this->runPackagePostInstallCommands($package);
             }
         }
 
