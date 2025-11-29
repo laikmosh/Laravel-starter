@@ -15,7 +15,8 @@
             "@php artisan horizon:install",
             "@php artisan starter:init",
             "@php artisan vendor:publish --tag=plog-config",
-            "@php artisan vendor:publish --tag=plog-assets"
+            "@php artisan vendor:publish --tag=plog-assets",
+            "@php cleanup.php"
         ]
     },
     "extra": {

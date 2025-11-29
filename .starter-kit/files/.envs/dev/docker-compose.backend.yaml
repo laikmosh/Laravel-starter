@@ -15,12 +15,12 @@ services:
     networks:
       - vpc
 
-  # Cloudflare
-  cloudflare:
-    env_file:
-      - ./cloudflared/.env
-    extends:
-      file: ../../../cicd/docker-compose.cicd.yaml
-      service: cloudflared
-    volumes:
-      - ./cloudflared/:/cf
+  # # Cloudflare
+  # cloudflare:
+  #   env_file:
+  #     - ./cloudflared/.env
+  #   extends:
+  #     file: ../../../cicd/docker-compose.cicd.yaml
+  #     service: cloudflared
+  #   volumes:
+  #     - ./cloudflared/:/cf
