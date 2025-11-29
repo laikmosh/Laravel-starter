@@ -124,7 +124,7 @@ class Installer
         if (isset($packages['require'])) {
             foreach ($packages['require'] as $package => $version) {
                 $this->output("  Installing {$package}...");
-                $this->exec("composer require {$package}:{$version}");
+                $this->exec("composer require {$package}:{$version} -W");
             }
         }
         
@@ -132,7 +132,7 @@ class Installer
         if (isset($packages['require-dev'])) {
             foreach ($packages['require-dev'] as $package => $version) {
                 $this->output("  Installing {$package} (dev)...");
-                $this->exec("composer require --dev {$package}:{$version}");
+                $this->exec("composer require --dev {$package}:{$version} -W");
             }
         }
 
@@ -161,7 +161,7 @@ class Installer
         if (!empty($permissions)) {
             foreach ($permissions as $package => $version) {
                 $this->output("  Installing {$package}...");
-                $this->exec("composer require {$package}:{$version}");
+                $this->exec("composer require {$package}:{$version} -W");
                 $this->runPackagePostInstallCommands($package);
             }
         }
@@ -170,7 +170,7 @@ class Installer
         if (!empty($devPermissions)) {
             foreach ($devPermissions as $package => $version) {
                 $this->output("  Installing {$package} (dev)...");
-                $this->exec("composer require --dev {$package}:{$version}");
+                $this->exec("composer require --dev {$package}:{$version} -W");
                 $this->runPackagePostInstallCommands($package);
             }
         }
