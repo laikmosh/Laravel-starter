@@ -23,9 +23,6 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Overwtite FrankenPHP binary
-RUN php artisan octane:install --server=frankenphp --no-interaction
-
 # Complete ZSH setup with user configuration
 COPY devtools/zsh /tmp/zsh-config/
 RUN chmod +x /tmp/zsh-config/setup-zsh.sh && /tmp/zsh-config/setup-zsh.sh && rm -rf /tmp/zsh-config

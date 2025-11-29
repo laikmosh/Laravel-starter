@@ -15,6 +15,11 @@ fi
 
 chmod -R ugo+rw /.composer
 
+# Check if the FrankenPHP binary is missing before trying to install it
+if [ ! -f "bin/frankenphp-mac" ] && [ ! -f "bin/frankenphp-linux-x86_64" ]; then
+    php artisan octane:install --server=frankenphp --no-interaction
+fi
+
 if [ $# -gt 0 ]; then
     if [ "$SUPERVISOR_PHP_USER" = "root" ]; then
         exec "$@"
