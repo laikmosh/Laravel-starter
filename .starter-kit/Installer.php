@@ -110,8 +110,6 @@ class Installer
             }
         }
         
-        // Configure application
-        $this->configureApplication();
     }
     
     private function installPackages()
@@ -120,10 +118,13 @@ class Installer
         if (!isset($this->originalComposer['extra']['starter-kit'])) {
             return;
         }
+
+        // Configure application
+        $this->configureApplication();
         
         $packages = $this->originalComposer['extra']['starter-kit'];
         
-              // Obtain permission to install optional packages
+        // Obtain permission to install optional packages
         $permissions = [];
         $devPermissions = [];
         $artisanPermissions = [];
@@ -151,8 +152,8 @@ class Installer
         }
 
         // Artisan commands
-        if (isset($packages['packages-post-install-commands'])) {
-            foreach ($packages['packages-post-install-commands'] as $title => $commands) {
+        if (isset($this->originalComposer['extra']['packages-post-install-commands'])) {
+            foreach ($this->originalComposer['extra']['packages-post-install-commands'] as $title => $commands) {
                 $key = "cmd:{$title}";
                 $allOptions[$key] = $title;
                 $optionLabels[$key] = "{$title} (Artisan Command)";
@@ -175,7 +176,7 @@ class Installer
                     $devPermissions[$package] = $packages['optional-dev'][$package];
                 } elseif (str_starts_with($key, 'cmd:')) {
                     $title = substr($key, 4);
-                    foreach ($packages['packages-post-install-commands'][$title] as $command) {
+                    foreach ($this->originalComposer['extra']['packages-post-install-commands'][$title] as $command) {
                         $artisanPermissions[$title] = $command;
                     }
                 }
@@ -237,6 +238,63 @@ class Installer
             
             $this->exec("npm run build");
         }
+
+        // Configure Horizon in supervisord
+        $this->configureSupervisorProgram('horizon', isset($permissions['laravel/horizon']));
+        
+        // Configure Reverb in supervisord
+        $this->configureSupervisorProgram('reverb', isset($artisanPermissions['broadcasting']));
+    }
+
+    private function configureSupervisorProgram($programName, $enabled)
+    {
+        if ($enabled) {
+            return;
+        }
+
+        $supervisorConf = $this->rootPath . '/.starter-kit/files/.envs/dev/laravel/supervisord.conf';
+        
+        // If the file has already been copied to the root (which happens in applyCustomizations),
+        // we should check there too, but based on the flow, applyCustomizations happens BEFORE installPackages.
+        // However, applyCustomizations copies from .starter-kit/files to root. 
+        // So we should modify the one in the root path if it exists there.
+        // Let's check where applyCustomizations copies to.
+        // It copies $filesDir ($rootPath . '/.starter-kit/files') to $rootPath.
+        // So the file should be at $this->rootPath . '/.envs/dev/laravel/supervisord.conf'
+        
+        $targetFile = $this->rootPath . '/.envs/dev/laravel/supervisord.conf';
+        
+        if (!file_exists($targetFile)) {
+            return;
+        }
+
+        $content = file_get_contents($targetFile);
+        $lines = explode("\n", $content);
+        $newLines = [];
+        $inSection = false;
+        $sectionHeader = "[program:{$programName}]";
+
+        foreach ($lines as $line) {
+            if (trim($line) === $sectionHeader) {
+                $inSection = true;
+                $newLines[] = '; ' . $line;
+                continue;
+            }
+
+            if ($inSection) {
+                if (trim($line) === '' || str_starts_with(trim($line), '[')) {
+                    $inSection = false;
+                    $newLines[] = $line;
+                } else {
+                    $newLines[] = '; ' . $line;
+                }
+            } else {
+                $newLines[] = $line;
+            }
+        }
+
+        file_put_contents($targetFile, implode("\n", $newLines));
+        $this->output("    Disabled {$programName} in supervisord.conf");
     }
 
     private function runPackagePostInstallCommands($package)
