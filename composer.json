@@ -4,12 +4,12 @@
     "description": "Laravel starter kit with batteries included",
     "license": "MIT",
     "require": {
-        "php": "^8.2"
+        "php": "^8.2",
+        "laravel/prompts": "^2.0"
     },
     "scripts": {
         "post-create-project-cmd": [
             "@php install.php",
-            "@php artisan octane:install",
             "@php artisan key:generate",
             "@php artisan starter:init",
             "@php cleanup.php"

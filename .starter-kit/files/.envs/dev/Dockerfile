@@ -23,6 +23,9 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Overwtite FrankenPHP binary
+RUN php artisan octane:install --server=frankenphp --no-interaction
+
 # Complete ZSH setup with user configuration
 COPY devtools/zsh /tmp/zsh-config/
 RUN chmod +x /tmp/zsh-config/setup-zsh.sh && /tmp/zsh-config/setup-zsh.sh && rm -rf /tmp/zsh-config
@@ -32,9 +35,6 @@ COPY backend/.envs/dev/laravel/start-container /usr/local/bin/start-container
 COPY backend/.envs/dev/laravel/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY backend/.envs/dev/laravel/php.ini /etc/php/8.4/cli/conf.d/99-sail.ini
 RUN chmod +x /usr/local/bin/start-container
-
-# Install Claude Code CLI (skip if install script is not available)
-RUN curl -fsSL https://storage.googleapis.com/anthropic-sdk/claude-code/install.sh | bash || echo "Claude Code CLI installation skipped (script not available)"
 
 # Override environment variables for your setup
 ENV WORKDIR="/workspaces/backend"
