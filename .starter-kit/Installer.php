@@ -123,8 +123,10 @@ class Installer
         // Install composer packages
         if (isset($packages['require'])) {
             foreach ($packages['require'] as $package => $version) {
-                $this->output("  Installing {$package}...");
-                $this->exec("composer require {$package}:{$version}");
+                if ($this->confirm("Install {$package}?", true)) {
+                    $this->output("  Installing {$package}...");
+                    $this->exec("composer require {$package}:{$version}");
+                }
             }
         }
         
