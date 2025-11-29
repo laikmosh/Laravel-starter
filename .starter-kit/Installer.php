@@ -143,8 +143,8 @@ class Installer
         // Artisan commands
         if (isset($packages['packages-post-install-commands'])) {
             foreach ($packages['packages-post-install-commands'] as $title => $commands) {
-                foreach ($commands as $command) {
-                    if ($this->confirm("Install {$title} artisan command?", true)) {
+                if ($this->confirm("Install {$title} artisan command?", true)) {
+                    foreach ($commands as $command) {
                         $artisanPermissions[$title] = $command;
                     }
                 }
