@@ -25,18 +25,21 @@ class StarterInit extends Command
         );
 
         // Copy server keys to multiple .env.server files
-        $serverSuccess = $this->copyEnvKeys(
-            sourceFile: base_path('.env'),
-            targetFiles: [
-                base_path('.envs/dev/.config/.env.server'),
-                base_path('.envs/prod/.config/.env.server'),
-            ],
-            keys: [
-                'REVERB_APP_ID',
-                'REVERB_APP_KEY',
-                'REVERB_APP_SECRET',
-            ]
-        );
+        $serverSuccess = true;
+        if (file_exists(base_path('config/reverb.php'))) {
+            $serverSuccess = $this->copyEnvKeys(
+                sourceFile: base_path('.env'),
+                targetFiles: [
+                    base_path('.envs/dev/.config/.env.server'),
+                    base_path('.envs/prod/.config/.env.server'),
+                ],
+                keys: [
+                    'REVERB_APP_ID',
+                    'REVERB_APP_KEY',
+                    'REVERB_APP_SECRET',
+                ]
+            );
+        }
 
         return ($appSuccess && $serverSuccess) ? Command::SUCCESS : Command::FAILURE;
     }
