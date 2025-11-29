@@ -138,26 +138,39 @@ class Installer
 
         // Obtain permission to install optional packages
         $permissions = [];
+        $devPermissions = [];
 
         // Require user confirmation for optional packages
-        if (isset($packages['optional']) || isset($packages['optional-dev'])) {
+        if (isset($packages['optional'])) {
             foreach ($packages['optional'] as $package => $version) {
                 if ($this->confirm("Install {$package}?", true)) {
                     $permissions[$package] = $version;
                 }
             }
+        }
+
+        if (isset($packages['optional-dev'])) {
             foreach ($packages['optional-dev'] as $package => $version) {
-                if ($this->confirm("Install {$package} --dev?", true)) {
-                    $permissions["--dev $package"] = $version;
+                if ($this->confirm("Install {$package} (dev)?", true)) {
+                    $devPermissions[$package] = $version;
                 }
             }
         }
 
         // Install optional packages
-        if (isset($permissions)) {
+        if (!empty($permissions)) {
             foreach ($permissions as $package => $version) {
                 $this->output("  Installing {$package}...");
                 $this->exec("composer require {$package}:{$version}");
+                $this->runPackagePostInstallCommands($package);
+            }
+        }
+
+        // Install optional dev packages
+        if (!empty($devPermissions)) {
+            foreach ($devPermissions as $package => $version) {
+                $this->output("  Installing {$package} (dev)...");
+                $this->exec("composer require --dev {$package}:{$version}");
                 $this->runPackagePostInstallCommands($package);
             }
         }
@@ -190,6 +203,7 @@ class Installer
     private function runPackagePostInstallCommands($package)
     {
         $artisanCommands = $this->originalComposer['extra']['packages-artisan-commands'][$package] ?? [];
+        $this->output("    Running ".count($artisanCommands)." command(s) for package: {$package}...");
         foreach ($artisanCommands as $command) {
             $this->output("    Running artisan command: {$command}...");
             $this->exec("php artisan {$command}");
