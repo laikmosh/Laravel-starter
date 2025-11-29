@@ -157,17 +157,17 @@ class Installer
             }
         }
 
-        // Install artisan commands
-        if (isset($packages['packages-post-install-commands'])) {
-            foreach ($packages['packages-post-install-commands'] as $package => $commands) {
-                foreach ($commands as $title => $command) {
-                    if ($this->confirm("Install {$title}?", true)) {
-                        $this->output("    Running artisan command: {$command}...");
-                        $this->exec("php artisan {$command}");
-                    }
-                }
-            }
-        }
+        // // Install artisan commands
+        // if (isset($packages['packages-post-install-commands'])) {
+        //     foreach ($packages['packages-post-install-commands'] as $package => $commands) {
+        //         foreach ($commands as $title => $command) {
+        //             if ($this->confirm("Install {$title}?", true)) {
+        //                 $this->output("    Running artisan command: {$command}...");
+        //                 $this->exec("php artisan {$command}");
+        //             }
+        //         }
+        //     }
+        // }
         
         // Install npm packages
         if (isset($packages['npm'])) {
