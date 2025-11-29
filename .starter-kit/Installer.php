@@ -442,6 +442,51 @@ ENV;
         }
     }
 
+    private function runPostInstall()
+    {
+        $this->output("\n🚀 Running post-install setup...");
+        
+        // Generate app key
+        $this->exec("php artisan key:generate");
+        
+        // Run migrations if database exists
+        if (file_exists($this->rootPath . '/database/database.sqlite')) {
+            $this->output("  Running migrations...");
+            $this->exec("php artisan migrate --force");
+        }
+        
+        // Link storage
+        $this->exec("php artisan storage:link");
+        
+        // Clear caches
+        $this->exec("php artisan optimize:clear");
+    }
+
+    private function cleanup()
+    {
+        $this->output("\n🧹 Cleaning up...");
+        
+        // Remove .starter-kit directory
+        $this->removeDirectory($this->rootPath . '/.starter-kit');
+        
+        // Remove install.php
+        if (file_exists($this->rootPath . '/install.php')) {
+            unlink($this->rootPath . '/install.php');
+        }
+    }
+
+    private function updateEnvExample()
+    {
+        $envPath = $this->rootPath . '/.env.example';
+        $customEnv = $this->rootPath . '/.starter-kit/env.additions';
+        
+        if (file_exists($customEnv)) {
+            $content = file_get_contents($envPath);
+            $additions = file_get_contents($customEnv);
+            file_put_contents($envPath, $content . "\n" . $additions);
+        }
+    }
+
     private function exec($command)
     {
         passthru($command, $returnCode);
