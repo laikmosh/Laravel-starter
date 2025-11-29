@@ -5,6 +5,8 @@ namespace StarterKit;
 
 class Installer
 {
+    private string $rootPath;
+    private array $originalComposer;
     private array $permissions = [];
     private array $devPermissions = [];
     private array $artisanPermissions = [];
@@ -319,5 +321,160 @@ ENV;
         
         file_put_contents($this->rootPath . '/.env', $envContent);
         $this->output("✓ Created basic .env file");
+    }
+
+    private function configureSupervisorProgram($programName, $enabled)
+    {
+        if ($enabled) {
+            return;
+        }
+
+        $supervisorConf = $this->rootPath . '/.starter-kit/files/.envs/dev/laravel/supervisord.conf';
+        
+        $targetFile = $this->rootPath . '/.envs/dev/laravel/supervisord.conf';
+        
+        if (!file_exists($targetFile)) {
+            return;
+        }
+
+        $content = file_get_contents($targetFile);
+        $lines = explode("\n", $content);
+        $newLines = [];
+        $inSection = false;
+        $sectionHeader = "[program:{$programName}]";
+
+        foreach ($lines as $line) {
+            if (trim($line) === $sectionHeader) {
+                $inSection = true;
+                $newLines[] = '; ' . $line;
+                continue;
+            }
+
+            if ($inSection) {
+                if (trim($line) === '' || str_starts_with(trim($line), '[')) {
+                    $inSection = false;
+                    $newLines[] = $line;
+                } else {
+                    $newLines[] = '; ' . $line;
+                }
+            } else {
+                $newLines[] = $line;
+            }
+        }
+
+        file_put_contents($targetFile, implode("\n", $newLines));
+        $this->output("    Disabled {$programName} in supervisord.conf");
+    }
+
+    private function runPackagePostInstallCommands($package)
+    {
+        $artisanCommands = $this->originalComposer['extra']['packages-artisan-commands'][$package] ?? [];
+        $this->output("    Running ".count($artisanCommands)." command(s) for package: {$package}...");
+        foreach ($artisanCommands as $command) {
+            $this->output("    Running artisan command: {$command}...");
+            $this->exec("php artisan {$command}");
+        }
+    }
+
+    private function updateComposerJson()
+    {
+        // Read the Laravel composer.json that was installed
+        $laravelComposer = json_decode(file_get_contents($this->rootPath . '/composer.json'), true);
+        
+        // Update with our original package name and description if they exist
+        if (isset($this->originalComposer['name'])) {
+            $laravelComposer['name'] = $this->originalComposer['name'];
+        }
+        if (isset($this->originalComposer['description'])) {
+            $laravelComposer['description'] = $this->originalComposer['description'];
+        }
+        
+        // Write back the updated composer.json
+        file_put_contents(
+            $this->rootPath . '/composer.json',
+            json_encode($laravelComposer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        );
+    }
+    
+    private function clearDirectory($dir, $exclude = [])
+    {
+        $files = scandir($dir);
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+            
+            // Skip excluded files/directories
+            if (in_array($file, $exclude)) {
+                continue;
+            }
+            
+            $path = $dir . '/' . $file;
+            if (is_dir($path)) {
+                $this->removeDirectory($path);
+            } else {
+                unlink($path);
+            }
+        }
+    }
+    
+    private function copyDirectory($source, $dest)
+    {
+        if (!is_dir($source)) {
+            return;
+        }
+        
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+        
+        foreach ($iterator as $item) {
+            $destPath = $dest . '/' . $iterator->getSubPathName();
+            
+            if ($item->isDir()) {
+                if (!is_dir($destPath)) {
+                    mkdir($destPath, 0755, true);
+                }
+            } else {
+                copy($item, $destPath);
+            }
+        }
+    }
+
+    private function exec($command)
+    {
+        passthru($command, $returnCode);
+        
+        if ($returnCode !== 0) {
+            $this->output("Error running: {$command}");
+            exit(1);
+        }
+        
+        return [];
+    }
+    
+    private function removeDirectory($dir)
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        
+        $objects = scandir($dir);
+        foreach ($objects as $object) {
+            if ($object != "." && $object != "..") {
+                if (is_dir($dir . "/" . $object)) {
+                    $this->removeDirectory($dir . "/" . $object);
+                } else {
+                    unlink($dir . "/" . $object);
+                }
+            }
+        }
+        rmdir($dir);
+    }
+    
+    private function output($message)
+    {
+        echo $message . "\n";
     }
 }
