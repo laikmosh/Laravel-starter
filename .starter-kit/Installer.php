@@ -139,6 +139,7 @@ class Installer
         // Obtain permission to install optional packages
         $permissions = [];
         $devPermissions = [];
+        $artisanPermissions = [];
 
         // Require user confirmation for optional packages
         if (isset($packages['optional'])) {
@@ -153,6 +154,17 @@ class Installer
             foreach ($packages['optional-dev'] as $package => $version) {
                 if ($this->confirm("Install {$package} (dev)?", true)) {
                     $devPermissions[$package] = $version;
+                }
+            }
+        }
+
+        // Install artisan commands
+        if (isset($packages['packages-post-install-commands'])) {
+            foreach ($packages['packages-post-install-commands'] as $title => $commands) {
+                foreach ($commands as $command) {
+                    if ($this->confirm("Install {$title} artisan command?", true)) {
+                        $artisanPermissions[$title] = $command;
+                    }
                 }
             }
         }
@@ -176,14 +188,10 @@ class Installer
         }
 
         // Install artisan commands
-        if (isset($packages['packages-post-install-commands'])) {
-            foreach ($packages['packages-post-install-commands'] as $package => $commands) {
-                foreach ($commands as $title => $command) {
-                    if ($this->confirm("Install {$title}?", true)) {
-                        $this->output("    Running artisan command: {$command}...");
-                        $this->exec("php artisan {$command}");
-                    }
-                }
+        if (!empty($artisanPermissions)) {
+            foreach ($artisanPermissions as $title => $command) {
+                $this->output("    Running artisan command: {$command}...");
+                $this->exec("php artisan {$command}");
             }
         }
         
