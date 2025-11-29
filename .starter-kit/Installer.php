@@ -124,7 +124,7 @@ class Installer
         if (isset($packages['require'])) {
             foreach ($packages['require'] as $package => $version) {
                 $this->output("  Installing {$package}...");
-                $this->exec("composer require {$package}:{$version} -W");
+                $this->exec("composer require {$package}:{$version}");
             }
         }
         
@@ -132,7 +132,7 @@ class Installer
         if (isset($packages['require-dev'])) {
             foreach ($packages['require-dev'] as $package => $version) {
                 $this->output("  Installing {$package} (dev)...");
-                $this->exec("composer require --dev {$package}:{$version} -W");
+                $this->exec("composer require --dev {$package}:{$version}");
             }
         }
 
@@ -161,7 +161,7 @@ class Installer
         if (!empty($permissions)) {
             foreach ($permissions as $package => $version) {
                 $this->output("  Installing {$package}...");
-                $this->exec("composer require {$package}:{$version} -W");
+                $this->exec("composer require {$package}:{$version}");
                 $this->runPackagePostInstallCommands($package);
             }
         }
@@ -170,22 +170,22 @@ class Installer
         if (!empty($devPermissions)) {
             foreach ($devPermissions as $package => $version) {
                 $this->output("  Installing {$package} (dev)...");
-                $this->exec("composer require --dev {$package}:{$version} -W");
+                $this->exec("composer require --dev {$package}:{$version}");
                 $this->runPackagePostInstallCommands($package);
             }
         }
 
-        // // Install artisan commands
-        // if (isset($packages['packages-post-install-commands'])) {
-        //     foreach ($packages['packages-post-install-commands'] as $package => $commands) {
-        //         foreach ($commands as $title => $command) {
-        //             if ($this->confirm("Install {$title}?", true)) {
-        //                 $this->output("    Running artisan command: {$command}...");
-        //                 $this->exec("php artisan {$command}");
-        //             }
-        //         }
-        //     }
-        // }
+        // Install artisan commands
+        if (isset($packages['packages-post-install-commands'])) {
+            foreach ($packages['packages-post-install-commands'] as $package => $commands) {
+                foreach ($commands as $title => $command) {
+                    if ($this->confirm("Install {$title}?", true)) {
+                        $this->output("    Running artisan command: {$command}...");
+                        $this->exec("php artisan {$command}");
+                    }
+                }
+            }
+        }
         
         // Install npm packages
         if (isset($packages['npm'])) {

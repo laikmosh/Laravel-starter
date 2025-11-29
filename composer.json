@@ -20,14 +20,12 @@
             "require": {
                 "laravel/octane": "^2.0"
             },
-            "require-dev": {
-            },
+            "require-dev": {},
             "optional": {
                 "livewire/livewire": "^3.0",
                 "spatie/laravel-permission": "^6.0",
                 "laravel/horizon": "^5.0",
-                "laikmosh/plog": "^1.0",
-                "spatie/laravel-backup": "^8.0"
+                "laikmosh/plog": "^1.0"
             },
             "optional-dev": {
                 "barryvdh/laravel-debugbar": "^3.0",
@@ -39,13 +37,22 @@
             }
         },
         "packages-artisan-commands": {
-            "livewire/livewire": ["livewire:install"],
-            "laravel/boost": ["boost:install"],
-            "laravel/horizon": ["horizon:install"],
-            "laikmosh/plog": ["vendor:publish --tag=plog-config", "vendor:publish --tag=plog-assets"]
+            "livewire/livewire": [
+                "livewire:install"
+            ],
+            "laravel/boost": [
+                "boost:install"
+            ],
+            "laravel/horizon": [
+                "horizon:install"
+            ],
+            "laikmosh/plog": [
+                "vendor:publish --tag=plog-config",
+                "vendor:publish --tag=plog-assets"
+            ]
         },
         "packages-post-install-commands": {
-            "broadcasting": "@php artisan install:broadcasting"
+            "broadcasting": "install:broadcasting"
         }
     }
 }
