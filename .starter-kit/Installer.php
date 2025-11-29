@@ -342,15 +342,14 @@ class Installer
     
     private function exec($command)
     {
-        exec($command . ' 2>&1', $output, $returnCode);
+        passthru($command, $returnCode);
         
         if ($returnCode !== 0) {
             $this->output("Error running: {$command}");
-            $this->output(implode("\n", $output));
             exit(1);
         }
         
-        return $output;
+        return [];
     }
     
     private function removeDirectory($dir)
