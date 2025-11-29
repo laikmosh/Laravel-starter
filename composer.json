@@ -9,20 +9,25 @@
     "scripts": {
         "post-create-project-cmd": [
             "@php install.php",
+            "@php artisan octane:install",
             "@php artisan key:generate",
             "@php artisan install:broadcasting",
-            "@php artisan starter:init"
+            "@php artisan horizon:install",
+            "@php artisan starter:init",
+            "@php artisan vendor:publish --tag=plog-config",
+            "@php artisan vendor:publish --tag=plog-assets"
         ]
     },
     "extra": {
         "starter-kit": {
             "require": {
-                "laravel/octane": "^2.12",
+                "laravel/octane": "^2.0",
                 "spatie/laravel-permission": "^6.0",
-                "livewire/livewire": "^3.0"
+                "laravel/horizon": "^5.0",
+                "laikmosh/plog": "^1.0"
             },
             "require-dev": {
-                "barryvdh/laravel-debugbar": "^3.9"
+                "barryvdh/laravel-debugbar": "^3.0"
             },
             "npm": {
                 "alpinejs": "^3.0",
