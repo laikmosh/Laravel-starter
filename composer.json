@@ -41,7 +41,6 @@
         "packages-artisan-commands": {
             "livewire/livewire": ["livewire:install"],
             "laravel/boost": ["boost:install"],
-            "spatie/laravel-permission": ["permission:install"],
             "laravel/horizon": ["horizon:install"],
             "laikmosh/plog": ["vendor:publish --tag=plog-config", "vendor:publish --tag=plog-assets"]
         },
